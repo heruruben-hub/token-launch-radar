@@ -1,10 +1,25 @@
 <!doctype html>
+<!--
+  Token Radar (radar-2): the ranked board of pre-token protocols.
+
+  This file is only the shell. The page is built by dashboard/app.js,
+  which reads ../data.js (written beside this dashboard by main.ts)
+  and renders the board, the filters, the per-protocol detail view,
+  the model panel and the sandbox into <main id="board">.
+
+  Nothing here reaches the network: the stylesheet is local, the two
+  scripts are local, and the page carries no link to anywhere else.
+  The data is a frozen DefiLlama snapshot from 2026-11-14, so the
+  ranking a reader sees is the ranking main.ts computed from it —
+  an implied value is a model, not a promise, and it never predicts
+  whether or when a token is issued.
+-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Token Radar (radar-2): pre-token protocols ranked by implied value</title>
-<meta name="description" content="Token Radar ranks pre-token protocols by an implied value computed from TVL, seven-day growth, age with no token recorded, chain breadth, and the live-token market-cap to TVL ratio of their category.">
+<meta name="description" content="Token Radar ranks pre-token protocols by an implied value computed from TVL, seven-day growth, age with no token recorded, chain breadth, and the live-token market-cap to TVL ratio of their category. Every row carries a farm plan, and every number can be recomputed in the page.">
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
