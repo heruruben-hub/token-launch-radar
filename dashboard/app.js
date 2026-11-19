@@ -1,18 +1,28 @@
-// Token Radar's dashboard, radar-2. It reads window.RADAR (written beside dashboard/ by main.ts) and
-// renders the ranked board, a filterable table, a per-protocol detail view with the model's own inputs
-// and the protocol's farm plan, and a model sandbox that recomputes a row live. No network: every byte
-// it shows is in data.js. "Records no token" is the honest wording throughout: the snapshot is
-// DefiLlama's record, not proof a token does not exist.
+// Token Radar's dashboard, radar-2 — rewritten in this revision pass. It reads window.RADAR
+// (written beside dashboard/ by main.ts) and renders the ranked board, a filterable table, a
+// per-protocol detail view with the model's own inputs and the protocol's farm plan, and a model
+// sandbox that recomputes a row live. No network: every byte it shows is in data.js. "Records no
+// token" is the honest wording throughout: the snapshot is DefiLlama's record, not proof a token
+// does not exist.
 (function () {
   'use strict';
 
   var DATA = window.RADAR;
   if (!DATA) return;
   var app = document.getElementById('board');
+
+  // What the reader is looking at right now: the search, the filters, the tab, the sort and the
+  // protocol whose detail is open. The hash keeps it shareable: a filtered board has a link.
   var state = { q: '', category: 'all', chain: 'all', watchlistOnly: false, tab: 'pre-token', sort: 'implied', dir: -1, selected: null };
-  // Sandbox: the reader's own weights. Defaults are the board's radar-2 constants; moving a slider
-  // recomputes the rows in the page only, and the panel always says the board keeps its own numbers.
+
+  // Sandbox: the reader's own weights. Defaults are the board's radar-2 constants; moving a
+  // slider recomputes the rows in the page only, and the panel always says the board keeps its
+  // own numbers.
   var sandbox = { growthUp: DATA.model.growth_weight_up, growthDown: DATA.model.growth_weight_down, maturityRange: DATA.model.maturity_range, active: false };
+
+  /* ---------------------------------------------------------- */
+  /* Formatting: money, growth, age and multipliers             */
+  /* ---------------------------------------------------------- */
 
   var usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
   function fmtUsd(n) {
@@ -33,11 +43,16 @@
   }
   function fmtMult(n) { return (n === null || n === undefined) ? 'n/a' : 'x' + Number(n).toFixed(2); }
 
-  // The radar-2 model in one function: the page recomputes a row from the snapshot figures and checks
-  // the number board.json carries, so the page's code and the board's data are visibly the same
-  // arithmetic. Sandbox weights replace the growth and maturity weights only.
+  /* ---------------------------------------------------------- */
+  /* The model, in the page: recompute a row and check the board */
+  /* ---------------------------------------------------------- */
+
+  // The radar-2 model in one function: the page recomputes a row from the snapshot figures and
+  // checks the number board.json carries, so the page's code and the board's data are visibly the
+  // same arithmetic. Sandbox weights replace the growth and maturity weights only.
   function impliedOf(row, model, sb) {
-    var growth = Math.min(model.growth_cap, Math.max(model.growth_floor, row.change_7d === null || row.change_7d === undefined ? 0 : row.change_7d));
+    var change = row.change_7d === null || row.change_7d === undefined ? 0 : row.change_7d;
+    var growth = Math.min(model.growth_cap, Math.max(model.growth_floor, change));
     var wUp = sb ? sb.growthUp : model.growth_weight_up;
     var wDown = sb ? sb.growthDown : model.growth_weight_down;
     var growthMult = 1 + (growth / 100) * (growth >= 0 ? wUp : wDown);
@@ -48,6 +63,10 @@
     return Math.max(1, Math.round(row.tvl_usd * row.comparable_multiple * growthMult * maturity * chainsMult));
   }
   function sandboxImplied(row) { return impliedOf(row, DATA.model, sandbox.active ? sandbox : null); }
+
+  /* ---------------------------------------------------------- */
+  /* A tiny DOM helper                                          */
+  /* ---------------------------------------------------------- */
 
   function el(tag, attrs) {
     var node = document.createElement(tag);
@@ -70,9 +89,13 @@
     return node;
   }
 
-  // The farm plan is the same derivation main.ts writes to board.json: category, chains, TVL and age
-  // decide the action, the test deposit, the second action, the capital, the hold and every cost and
-  // time. No name is special-cased.
+  /* ---------------------------------------------------------- */
+  /* The farm plan: the same derivation main.ts writes to board */
+  /* ---------------------------------------------------------- */
+
+  // The farm plan is the same derivation main.ts writes to board.json: category, chains, TVL and
+  // age decide the action, the test deposit, the second action, the capital, the hold and every
+  // cost and time. No name is special-cased.
   function chainOf(p) { return p.chains && p.chains.length > 0 ? p.chains[0] : 'its main chain'; }
   function capitalFor(p) {
     if (p.tvl_usd >= 5e9) return 250;
@@ -137,6 +160,37 @@
     ].map(stepText);
   }
 
+  // One plain-text copy of a protocol's farm plan, so a reader can paste it into a note or a
+  // farm log without retyping eight steps. The header line carries the rank and the implied
+  // value the plan belongs to.
+  function farmPlanText(row, steps) {
+    var lines = ['Farm plan — ' + row.name + ' (rank ' + row.rank + ' of ' + DATA.board_size + ', implied value ' + fmtUsd(row.implied_value_usd) + ')'];
+    steps.forEach(function (s, i) { lines.push((i + 1) + '. ' + s); });
+    return lines.join('\n');
+  }
+  function copyText(text, done) {
+    // The clipboard API where the browser allows it, a hidden textarea where it does not.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+      return;
+    }
+    var area = document.createElement('textarea');
+    area.value = text;
+    area.setAttribute('readonly', '');
+    area.style.position = 'absolute';
+    area.style.left = '-9999px';
+    document.body.appendChild(area);
+    area.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(area);
+    done(ok);
+  }
+
+  /* ---------------------------------------------------------- */
+  /* The hash: the board's state, shareable in a link           */
+  /* ---------------------------------------------------------- */
+
   function readHash() {
     var hash = window.location.hash.replace(/^#/, '');
     if (!hash) return;
@@ -158,6 +212,10 @@
     if (next) window.history.replaceState(null, '', '#' + next);
     else window.history.replaceState(null, '', window.location.pathname + window.location.search);
   }
+
+  /* ---------------------------------------------------------- */
+  /* Filtering and sorting the board                            */
+  /* ---------------------------------------------------------- */
 
   function rows() {
     var q = state.q.trim().toLowerCase();
@@ -186,6 +244,10 @@
       return a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0;
     });
   }
+
+  /* ---------------------------------------------------------- */
+  /* The page's sections                                        */
+  /* ---------------------------------------------------------- */
 
   function header() {
     return el('header', { class: 'top' },
@@ -370,6 +432,10 @@
     return panel;
   }
 
+  /* ---------------------------------------------------------- */
+  /* The detail view: one protocol, its model and its farm plan */
+  /* ---------------------------------------------------------- */
+
   var dialog = el('dialog', { class: 'detail', id: 'detail', 'aria-labelledby': 'detail-title' });
   dialog.addEventListener('close', function () { state.selected = null; writeHash(); });
 
@@ -401,10 +467,24 @@
         el('div', null, el('span', { text: 'Chains (' + (row.chains || []).length + ')' }), el('b', { class: 'num', text: fmtMult(row.chains_multiplier) })),
         el('div', null, el('span', { text: 'Implied value' }), el('b', { class: 'num', text: fmtUsd(row.implied_value_usd) }))
       ),
+      el('p', { class: 'sub', text: row.why ? row.why : '' }),
       el('p', { class: 'sub', text: 'Model ' + DATA.model_version + ': the same function scores every protocol. The page recomputes this row as ' + fmtUsd(recomputed) + (recomputed === row.implied_value_usd ? ', the same number board.json carries.' : ', which differs from the board: the data would be stale.') + ' This is an estimate, not a price, and it never predicts whether or when a token is issued.' })
     ));
+    var copyBtn = el('button', { class: 'button copy-btn', type: 'button', text: 'Copy farm plan', 'aria-label': 'Copy this farm plan as text' });
+    copyBtn.addEventListener('click', function () {
+      copyBtn.disabled = true;
+      copyText(farmPlanText(row, steps), function (ok) {
+        copyBtn.textContent = ok ? 'Copied to clipboard' : 'Copy did not work — select the steps instead';
+        copyBtn.classList.toggle('copied', ok);
+        window.setTimeout(function () {
+          copyBtn.textContent = 'Copy farm plan';
+          copyBtn.classList.remove('copied');
+          copyBtn.disabled = false;
+        }, 2000);
+      });
+    });
     dialog.appendChild(el('section', { class: 'detail-section' },
-      el('h3', { text: 'Farm plan' }),
+      el('div', { class: 'detail-actions' }, el('h3', { text: 'Farm plan' }), copyBtn),
       el('p', { class: 'sub', text: 'Eight steps, in order. Start with $10, not the full position: a bad contract or a wrong network should cost a few dollars.' }),
       el('ol', { class: 'steps' }, steps.map(function (s) {
         var at = s.indexOf(' Cost: ');
@@ -419,6 +499,10 @@
       dialog.setAttribute('open', '');
     }
   }
+
+  /* ---------------------------------------------------------- */
+  /* Render the whole page                                      */
+  /* ---------------------------------------------------------- */
 
   function render() {
     app.textContent = '';

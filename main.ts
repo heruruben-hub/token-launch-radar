@@ -6,9 +6,11 @@
 // writes /output/dossier.json, the summary the judge reads, with the vendored make.fun library.
 //
 // The dashboard is a static page, no framework and no network: dashboard/index.html, dashboard/app.css
-// and dashboard/app.js read /output/data.js, which this program writes from the same board. A starting
-// point, not a winner: it covers the watchlist, states the model and gives every protocol a farm plan.
-// Change the model, the page or the plan; keep the gate's shape.
+// and dashboard/app.js read /output/data.js, which this program writes from the same board. The model
+// is a comparable multiple per category, an asymmetric growth weight, a maturity factor from the time
+// listed with no token recorded, and a chains factor; the page states it, recomputes it live, and
+// gives every protocol a farm plan. The program runs twice in the grader and must write identical
+// bytes both times, so nothing here reads the clock, the network or a random source.
 //
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts --input ../input/snapshot.json
