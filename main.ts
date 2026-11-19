@@ -1,9 +1,9 @@
-// A working token-radar-01 entry (Node 22, standard library only).
+// A working token-radar-01 entry (Node 22, standard library only), radar-2 model.
 //
 // The program reads the sealed snapshot from /input/snapshot.json (or --input <file|dir>), scores every
-// pre-token protocol with the model in lib/model.ts, writes the ranked board to /output/board.json, and
-// copies this repository's dashboard/ and screenshots/ to /output. Last, it writes /output/dossier.json,
-// the summary the judge reads, with the vendored make.fun library.
+// pre-token protocol with the radar-2 model in lib/model.ts, writes the ranked board to
+// /output/board.json, and copies this repository's dashboard/ and screenshots/ to /output. Last, it
+// writes /output/dossier.json, the summary the judge reads, with the vendored make.fun library.
 //
 // The dashboard is a static page, no framework and no network: dashboard/index.html, dashboard/app.css
 // and dashboard/app.js read /output/data.js, which this program writes from the same board. A starting
